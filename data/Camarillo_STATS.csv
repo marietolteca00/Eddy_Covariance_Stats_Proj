@@ -1,0 +1,14 @@
+Stn Id,Stn Name,CIMIS Region,Month Year,Total ETo (in),qc,Total Precip (in),qc,Avg Sol Rad (Ly/day),qc,Avg Vap Pres (mBars),qc,Avg Max Air Temp (F),qc,Avg Min Air Temp (F),qc,Avg Air Temp (F),qc,Avg Max Rel Hum (%),qc,Avg Min Rel Hum (%),qc,Avg Rel Hum (%),qc,Avg Dew Point (F),qc,Avg Wind Speed (mph),qc,Avg Soil Temp (F),qc
+152,Camarillo,Central Coast Valleys,Oct 2024,3.53, ,0.52,K,371,K,14.6,K,75.9, ,52.3, ,62.6,K,92,K,53,K,76, ,53.9, ,3.0,K,62.3,K
+152,Camarillo,Central Coast Valleys,Nov 2024,2.90, ,0.69, ,287, ,8.7,K,69.8, ,44.6,K,56.7, ,78, ,36, ,57,K,39.2,K,3.5,K,53.1,K
+152,Camarillo,Central Coast Valleys,Dec 2024,2.17,K,0.70, ,238, ,9.5, ,68.2,K,43.0, ,54.4,K,87,K,47,K,71,L,42.6,L,3.2,K,51.2, 
+152,Camarillo,Central Coast Valleys,Jan 2025,3.41, ,0.24, ,287, ,6.4,K,68.1,K,43.3,K,55.4,K,67, ,31, ,48,K,30.6,K,4.8,K,48.9,K
+152,Camarillo,Central Coast Valleys,Feb 2025,2.67,K,3.09, ,336, ,10.9,K,68.2,K,44.1, ,55.5,K,93,K,50,K,73,K,46.3,K,3.4, ,51.3, 
+152,Camarillo,Central Coast Valleys,Mar 2025,3.47, ,1.55, ,408, ,11.0, ,65.0,K,44.6, ,54.6, ,93, ,56, ,75, ,46.7, ,3.7,K,53.3,K
+152,Camarillo,Central Coast Valleys,Apr 2025,4.47, ,0.21, ,512, ,11.8,K,67.9, ,47.2, ,57.3, ,93,K,56,K,74, ,48.8, ,3.6,K,58.4,K
+152,Camarillo,Central Coast Valleys,May 2025,5.24,K,0.62,K,561, ,14.6, ,71.9,K,51.7, ,61.6,K,95, ,62, ,78,K,54.6,K,3.4, ,63.1,K
+152,Camarillo,Central Coast Valleys,Jun 2025,5.46, ,0.13, ,596, ,16.3, ,73.1, ,55.9, ,63.9, ,94, ,65, ,80, ,57.7, ,3.4, ,66.8,K
+152,Camarillo,Central Coast Valleys,Jul 2025,6.18, ,0.11, ,641, ,17.2, ,74.9, ,57.2, ,65.2, ,95, ,65, ,81, ,59.2, ,3.6, ,68.7,K
+152,Camarillo,Central Coast Valleys,Aug 2025,5.98,K,0.17,K,546, ,17.9, ,79.8,K,57.8, ,68.1,K,95, ,58, ,77,K,60.3,K,3.1, ,68.3,K
+152,Camarillo,Central Coast Valleys,Sep 2025,4.18, ,0.44, ,442, ,19.5, ,79.0, ,59.9,K,68.6, ,96, ,63, ,82, ,62.7, ,3.2,K,67.4, 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                

@@ -1,0 +1,105 @@
+---
+title: "EC_Final_Proj"
+subtitle: "Into A Stations in Northern and Southern California Stations"
+format: html
+editor: visual
+---
+
+##Library Importing
+
+```{r}
+library(tidyverse)
+library(here)
+library(dplyr)
+```
+
+## Importing Data
+
+```{r}
+five_points <- read_csv(here("data/Five_Points_STATS.csv"), 
+                        show_col_types = FALSE) %>% 
+  janitor::clean_names()
+
+camarillo <- read_csv(here("data/Camarillo_STATS.csv"),
+                      # R suggested to use
+                      show_col_types = FALSE) %>%
+  # Helps not have 'qc...6, etc'
+  janitor::clean_names()
+
+```
+
+## There is a columnn called 'Total ETo (in)' in the dataset. The Station itself has already calculated the Evapotranspiration using the Penman-Monteith (PM) equation.
+
+$$
+ET_0 = \frac{0.408 \, \Delta \, (R_n - G) + \gamma \frac{900}{T+273} \, u_2 \, (e_s - e_a)}{\Delta + \gamma (1 + 0.34 \, u_2)}
+$$
+
+In this project I will use the *Total ETo column* as my *Response Variable*. The *predictor variables* will be *Average Air Temperature (F)* as well as *Total Precipitation (in)*
+
+## Data Exploratory
+```{r}
+hist(camarillo$total_e_to_in)
+hist(camarillo$total_precip_in)
+```
+
+```{r}
+summary(camarillo)
+glimpse(camarillo)
+view(camarillo$month_year)
+camarillo <- camarillo %>%
+  # Adding a column for plotting time
+  mutate(month_year_date = my(month_year))  # 'my' parses "Oct 2024" to a Date Y-M-D
+
+# Checking Result
+head(camarillo$month_year_date)
+
+```
+
+```{r}
+ggplot(data = five_points, aes(x = month_year, y = total_e_to_in)) +
+  geom_point() +
+  labs(title = "Five Points ET Over Time")+
+  theme_linedraw()
+
+```
+# Creating Linear Models for each station and Interpretations
+```{r}
+cam_lm <- lm(total_e_to_in ~ total_precip_in + avg_air_temp_f,
+               data = camarillo)
+
+summary(cam_lm)
+B0 <- cam_lm$coef[1]
+B1 <- cam_lm$coef[2]
+B2 <- cam_lm$coef[3]
+
+print(paste("B0 =", B0, "(β₀): Expected ETo when both predictors = 0 (not very meaningful physically, but needed).",
+            
+            "| B1 (Temperature) =", B1,"Temperature): Change in monthly ETo (in inches) for every 1°F increase in mean air temperature, holding precipitation constant.", 
+            
+            "| B2 (Precipitation) =", B2, "Precipitation): Change in ETo for each additional inch of rainfall, holding temperature constant."))
+
+
+fp_lm <- lm(total_e_to_in ~ total_precip_in + avg_air_temp_f,
+               data = five_points)
+summary(fp_lm)
+
+B0_fp <- fp_lm$coef[1]
+B1_fp <- fp_lm$coef[2]
+B2_fp <- fp_lm$coef[3]
+
+print(paste("B0 =", B0_fp, "(β₀): Expected ETo when both predictors = 0 (not very meaningful physically, but needed).",
+            
+            "| B1 (Temperature) =", B1_fp,"Temperature): Change in monthly ETo (in inches) for every 1°F increase in mean air temperature, holding precipitation constant.", 
+            
+            "| B2 (Precipitation) =", B2_fp, "Precipitation): Change in ETo for each additional inch of rainfall, holding temperature constant."))
+
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
