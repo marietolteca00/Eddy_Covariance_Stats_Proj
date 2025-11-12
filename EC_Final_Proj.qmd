@@ -1,30 +1,44 @@
 ---
 title: "EC_Final_Proj"
 subtitle: "Into A Stations in Northern and Southern California Stations"
+author: "Marie Tolteca"
 format: html
 editor: visual
 ---
 
-##Library Importing
-
-```{r}
+##Import Libraries
+```{r, message=FALSE}
 library(tidyverse)
 library(here)
 library(dplyr)
+library(patchwork)
 ```
 
 ## Importing Data
-
 ```{r}
-five_points <- read_csv(here("data/Five_Points_STATS.csv"), 
+eto <- read_csv(here("data/daily_eto_variance_CAM.csv"), 
                         show_col_types = FALSE) %>% 
   janitor::clean_names()
 
-camarillo <- read_csv(here("data/Camarillo_STATS.csv"),
+daily <- read_csv(here("data/daily_data_CAM.csv"),
                       # R suggested to use
                       show_col_types = FALSE) %>%
   # Helps not have 'qc...6, etc'
   janitor::clean_names()
+
+
+# data <- read_csv(here("data/Camarillo_STATS.csv"), 
+#                         show_col_types = FALSE) %>% 
+#   janitor::clean_names()
+```
+# Data Cleaning
+```{r}
+# Dropping columns that have `qc`
+drop <- c("qc_6", "qc_8")
+eto[ , !(names(eto) %in% drop)]
+
+drops <- c("qc_")
+daily[ , !(names(daily) %in% drops)]
 
 ```
 
@@ -38,31 +52,60 @@ In this project I will use the *Total ETo column* as my *Response Variable*. The
 
 ## Data Exploratory
 ```{r}
-hist(camarillo$total_e_to_in)
-hist(camarillo$total_precip_in)
+hist(daily$e_to_in)
+hist(daily$precip_in)
 ```
 
 ```{r}
-summary(camarillo)
-glimpse(camarillo)
-view(camarillo$month_year)
-camarillo <- camarillo %>%
-  # Adding a column for plotting time
-  mutate(month_year_date = my(month_year))  # 'my' parses "Oct 2024" to a Date Y-M-D
+#summary(daily)
+glimpse(daily)
+names(daily)
+# Viewing date column
+view(daily$date)
+# Data type
+class(daily$date)
 
-# Checking Result
-head(camarillo$month_year_date)
 
 ```
 
 ```{r}
-ggplot(data = five_points, aes(x = month_year, y = total_e_to_in)) +
+map1<- ggplot(data = daily, aes(x = date, y = e_to_in)) +
   geom_point() +
-  labs(title = "Five Points ET Over Time")+
+  labs(title = "Camarillo, Daily ET Over A Year")+
   theme_linedraw()
 
+map2<-ggplot(data = daily, aes(x = date, y = avg_air_temp_f)) +
+  geom_point() +
+  labs(title = "Camarillo, Daily ET Over A Year")+
+  theme_linedraw()
+
+(map1+map2)
 ```
+
+
+```{r}
+map3 <- ggplot(data = eto, aes(x = date, y = avg_e_to_in)) +
+  geom_point() +
+  labs(title = "Camarillo, ET Over A Year")+
+  theme_linedraw()
+map4 <-ggplot(data = daily, aes(x = date, y = avg_air_temp_f)) +
+  geom_point() +
+  labs(title = "Camarillo, Daily Temp Over A Year")+
+  theme_linedraw()
+
+(map3+map4)
+```
+# Joining Data
+```{r}
+joined_df <- left_join(eto, daily, by = "date")
+
+head(joined_df)
+```
+
+
+
 # Creating Linear Models for each station and Interpretations
+response ~ predictor
 ```{r}
 cam_lm <- lm(total_e_to_in ~ total_precip_in + avg_air_temp_f,
                data = camarillo)
