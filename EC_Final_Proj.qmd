@@ -6,7 +6,8 @@ format: html
 editor: visual
 ---
 
-##Import Libraries
+# Import Libraries
+
 ```{r, message=FALSE}
 library(tidyverse)
 library(here)
@@ -14,8 +15,9 @@ library(dplyr)
 library(patchwork)
 ```
 
-## Importing Data
-```{r}
+# Importing Data
+
+```{r, message=FALSE, output = FALSE}
 eto <- read_csv(here("data/daily_eto_variance_CAM.csv"), 
                         show_col_types = FALSE) %>% 
   janitor::clean_names()
@@ -25,20 +27,23 @@ daily <- read_csv(here("data/daily_data_CAM.csv"),
                       show_col_types = FALSE) %>%
   # Helps not have 'qc...6, etc'
   janitor::clean_names()
-
-
-# data <- read_csv(here("data/Camarillo_STATS.csv"), 
-#                         show_col_types = FALSE) %>% 
-#   janitor::clean_names()
+head(eto)
 ```
+
 # Data Cleaning
-```{r}
+
+```{r, output =FALSE}
+
 # Dropping columns that have `qc`
+# ETO Dataset
 drop <- c("qc_6", "qc_8")
 eto[ , !(names(eto) %in% drop)]
 
+# DAILY Dataset
 drops <- c("qc_")
 daily[ , !(names(daily) %in% drops)]
+
+
 
 ```
 
@@ -50,23 +55,29 @@ $$
 
 In this project I will use the *Total ETo column* as my *Response Variable*. The *predictor variables* will be *Average Air Temperature (F)* as well as *Total Precipitation (in)*
 
-## Data Exploratory
+# Data Exploratory
+
 ```{r}
 hist(daily$e_to_in)
 hist(daily$precip_in)
 ```
 
 ```{r}
-#summary(daily)
-glimpse(daily)
-names(daily)
-# Viewing date column
-view(daily$date)
 # Data type
 class(daily$date)
 
+#summary(daily)
+names(daily)
+
+# Check NA's
+colSums(is.na(daily))
+colSums(is.na(eto))
+
 
 ```
+
+
+
 
 ```{r}
 map1<- ggplot(data = daily, aes(x = date, y = e_to_in)) +
@@ -82,7 +93,6 @@ map2<-ggplot(data = daily, aes(x = date, y = avg_air_temp_f)) +
 (map1+map2)
 ```
 
-
 ```{r}
 map3 <- ggplot(data = eto, aes(x = date, y = avg_e_to_in)) +
   geom_point() +
@@ -95,54 +105,111 @@ map4 <-ggplot(data = daily, aes(x = date, y = avg_air_temp_f)) +
 
 (map3+map4)
 ```
+
 # Joining Data
-```{r}
-joined_df <- left_join(eto, daily, by = "date")
-
-head(joined_df)
-```
-
-
-
-# Creating Linear Models for each station and Interpretations
-response ~ predictor
-```{r}
-cam_lm <- lm(total_e_to_in ~ total_precip_in + avg_air_temp_f,
-               data = camarillo)
-
-summary(cam_lm)
-B0 <- cam_lm$coef[1]
-B1 <- cam_lm$coef[2]
-B2 <- cam_lm$coef[3]
-
-print(paste("B0 =", B0, "(β₀): Expected ETo when both predictors = 0 (not very meaningful physically, but needed).",
-            
-            "| B1 (Temperature) =", B1,"Temperature): Change in monthly ETo (in inches) for every 1°F increase in mean air temperature, holding precipitation constant.", 
-            
-            "| B2 (Precipitation) =", B2, "Precipitation): Change in ETo for each additional inch of rainfall, holding temperature constant."))
-
-
-fp_lm <- lm(total_e_to_in ~ total_precip_in + avg_air_temp_f,
-               data = five_points)
-summary(fp_lm)
-
-B0_fp <- fp_lm$coef[1]
-B1_fp <- fp_lm$coef[2]
-B2_fp <- fp_lm$coef[3]
-
-print(paste("B0 =", B0_fp, "(β₀): Expected ETo when both predictors = 0 (not very meaningful physically, but needed).",
-            
-            "| B1 (Temperature) =", B1_fp,"Temperature): Change in monthly ETo (in inches) for every 1°F increase in mean air temperature, holding precipitation constant.", 
-            
-            "| B2 (Precipitation) =", B2_fp, "Precipitation): Change in ETo for each additional inch of rainfall, holding temperature constant."))
-
-```
-
-You can add options to executable code like this
 
 ```{r}
-#| echo: false
-2 * 2
+daily_eto <- left_join(eto, daily, by = "date") %>% 
+  janitor::clean_names() %>% 
+  # Remove ALL columns that start with "qc_" - Not needed
+  select(!starts_with("qc_")) %>% 
+  # Drop double column of site name, number, and region
+  select(!starts_with(c("cimis_region_y","stn_name_y","stn_id_y")))
+
+# Checking NA's
+colSums(is.na(daily_eto))
+
+# View first 5 rows
+head(daily_eto)
+
+```
+# Hypothesis: 
+
+1) State your hypothesis for your final project. Using this week's wildfire lab as an example, your hypothesis could be "The number of wildfires increases with vapor pressure deficit." That's an example of a scientific hypothesis. To state the equivalent statistical hypothesis, you first need a model. That's the second goal of this checkpoint.
+- `Evapotranspiration (ETo) increases with higher air temperature and decreases with higher precipitation.`
+$$
+\begin{align}
+{Eto} &\sim{Gamma(α,λ)}
+\end{align}
+$$
+
+$$
+\begin{align}
+ET_0 = β0 + β1(Precipitation) + β2(Temperature)
+\end{align}
+$$
+- Evapotranspiration (ETo) is driven by vapor pressure deficit, radiation, and temperature. On days with higher precipitation, ETo tends to decrease because of cloud cover, lower radiation, and higher humidity.
+
+
+2) Describe your model in statistical notation using the appropriate response family, link function, and predictors. Then use your model to state a statistical hypothesis. Using the wildfire lab again as an example, your statistical hypothesis would be "H0: β_1 = 0; HA: β_1 > 0".
+
+- I model daily ETo for the Camarillo station using:
+
+$$
+\begin{align}
+Precipitation: 
+H0 : B1 = 0 \\
+HA : B1 < 0 \\
+\end{align}
+
+$$
+*(Eto decreases on wetter days)*
+
+$$
+\begin{align}
+Temperature: 
+H0 : B1 = 0 \\
+HA : B1 > 0
+\end{align}
+$$
+*(Eto increases with temperature)*
+
+- Eto = evapotranspiration (inches)
+- Precipitation = Daily Precipitation (inches)
+- Temperature = Average Daily Air Temperature (\u00B0 F)
+- Using a Gamma Model and a link of a log allows to have fitted values of 0-1 remain positive.
+
+
+# Attempt at creating glm and interpretting results
+
+Interested in Evapotranspiration (eto) and average temperature (avg_air_temp_f) in the location of Camarillo, California.
+```{r}
+# This will remove any negative integers
+daily_eto <- daily_eto %>%
+  mutate(e_to_in_adj = e_to_in + 1e-6)
+
+
+# Gamma regression for daily ETo
+cam_gamma <- glm(
+  e_to_in_adj ~ precip_in + avg_air_temp_f,
+  data = daily_eto,
+  family = Gamma(link = "log")
+)
+
+
+# Look at results
+summary(cam_gamma)
+
+# equation
+cam_gamma$formula
+
+# Extract coefficients
+B0 <- cam_gamma$coef[1]
+B1 <- cam_gamma$coef[2]
+B2 <- cam_gamma$coef[3]
+
+#Sigma and mean? Do not pop up with `$`
+
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+"B0 = `r round(B0, 2)` (β₀): The expected ETo when precipitation = 0 and temperature = 0°F."
+
+"B1 = `r round(B1, 2)` (β₁): For each 1-inch increase in precipitation, expected ETo is multiplied by exp(β₁) = `-1.5` inches. This corresponds to approximately a `15%` change in ETo, holding temperature constant."
+
+"B2 = `r round(B2, 2)` (β₂): For each 1°F increase in mean air temperature, expected 
+ETo is multiplied by exp(β₂) = `0.046`. This corresponds to approximately a `4.6%` increase in ETo, holding precipitation constant."
+
+
+
+
+
