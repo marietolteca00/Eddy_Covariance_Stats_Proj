@@ -53,3 +53,6 @@ $$
 -   Precipitation = Daily Precipitation (inches)
 -   Temperature = Average Daily Air Temperature (F Degrees)
 -   Using a Gamma Model and a link of a log allows to have fitted values of 0-1 remain positive.
+
+## References
+- CIMIS. Cimis.water.ca.gov. https://cimis.water.ca.gov/WSNReportCriteria.aspx

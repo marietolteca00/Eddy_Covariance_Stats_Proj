@@ -39,9 +39,6 @@ eto[ , !(names(eto) %in% drop)]
 # DAILY Dataset
 drops <- c("qc_")
 daily[ , !(names(daily) %in% drops)]
-
-
-
 ```
 
 ## There is a columnn called 'Average ETo (in)' in the dataset. The Station itself has already calculated the Evapotranspiration using the Penman-Monteith (PM) equation.
