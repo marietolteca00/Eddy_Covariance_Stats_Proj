@@ -1,13 +1,12 @@
 ---
-title: "EC_Final_Proj"
-subtitle: "Into A Stations in Northern and Southern California Stations"
+title: "Evapotranspiration and Temperature in Camarillo, CA"
+subtitle: "From California Irrigation Managment Information System (CIMIS) Station"
 author: "Marie Tolteca"
 format: html
 editor: visual
 ---
 
 # Import Libraries
-
 ```{r, message=FALSE}
 library(tidyverse)
 library(here)
@@ -16,7 +15,6 @@ library(patchwork)
 ```
 
 # Importing Data
-
 ```{r, message=FALSE, output = FALSE}
 eto <- read_csv(here("data/daily_eto_variance_CAM.csv"), 
                         show_col_types = FALSE) %>% 
@@ -31,8 +29,7 @@ head(eto)
 ```
 
 # Data Cleaning
-
-```{r, output =FALSE}
+```{r, message=FALSE}
 
 # Dropping columns that have `qc`
 # ETO Dataset
@@ -47,7 +44,7 @@ daily[ , !(names(daily) %in% drops)]
 
 ```
 
-## There is a columnn called 'Total ETo (in)' in the dataset. The Station itself has already calculated the Evapotranspiration using the Penman-Monteith (PM) equation.
+## There is a columnn called 'Average ETo (in)' in the dataset. The Station itself has already calculated the Evapotranspiration using the Penman-Monteith (PM) equation.
 
 $$
 ET_0 = \frac{0.408 \, \Delta \, (R_n - G) + \gamma \frac{900}{T+273} \, u_2 \, (e_s - e_a)}{\Delta + \gamma (1 + 0.34 \, u_2)}
