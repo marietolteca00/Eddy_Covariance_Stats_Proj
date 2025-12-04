@@ -1,0 +1,87 @@
+---
+title: "testing"
+format: html
+---
+
+# Inference
+```{r}
+library(tidyverse)
+set.seed(42)
+
+# Number of observations - random
+n <- 500
+
+# Runif - random number generator
+precip_sim <- runif(n, 0, 2)           # 0–2 inches
+temp_sim   <- rnorm(n, 65, 10)         # avg temp
+
+# Let's define our population
+beta0 <- -1.2
+beta1 <- -0.3   # ETo decreases with precipitation
+beta2 <- 0.015  # ETo increases with temperature
+
+# Exponential of Coefficients (mu simulated)
+mu_sim <- exp(beta0 + beta1*precip_sim + beta2*temp_sim)
+
+# Parameters- Needs to be positive
+shape <- 12
+
+# Simulated ETo using `Rgamma`
+ETo_sim <- rgamma(n, shape = shape, rate = shape / mu_sim)
+# View Eto_sim
+hist(ETo_sim)
+
+# Combine into a dataframe
+sim_data <- data.frame(
+  precip = precip_sim,
+  temp = temp_sim,
+  ETo = ETo_sim)
+
+# Plot Simulated Data
+ggplot(sim_data, aes(x = ETo)) +
+  geom_histogram(bins = 30, color = "white") +
+  labs(title = "Simulated Gamma Distribution of ETo")
+
+
+
+# Fit Gamma Model
+sim_gamma <- glm(
+  ETo ~ precip + temp,
+  data = sim_data,
+  family = Gamma(link = "log"))
+
+summary(sim_gamma)
+
+
+# Creating Precipitation Grid
+precip_grid <- data.frame(
+  precip = seq(min(sim_data$precip), max(sim_data$precip), length.out = 100),
+  temp = median(sim_data$temp))
+
+# Confidence Interval Prediction
+pred_ci <- predict(
+  sim_gamma,
+  newdata = precip_grid,
+  type = "link",
+  se.fit = TRUE)
+
+precip_grid$fit  <- exp(pred_ci$fit)
+# Lower CI
+precip_grid$lwr  <- exp(pred_ci$fit - 1.96 * pred_ci$se.fit)
+# Upper CI
+precip_grid$upr  <- exp(pred_ci$fit + 1.96 * pred_ci$se.fit)
+
+# Plot
+ggplot(precip_grid, aes(x = precip, y = fit)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.25) +
+  geom_line(size = 1.2) +
+  labs(
+    title = "Effect of Precipitation on ETo",
+    subtitle = "Gamma GLM with 95% Confidence Intervals",
+    x = "Precipitation (in)",
+    y = "Predicted ETo"
+  ) +
+  theme_minimal()
+
+
+```

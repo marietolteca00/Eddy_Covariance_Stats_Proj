@@ -69,23 +69,17 @@ hist(daily$e_to_in)
 #hist(daily$precip_in)
 #hist(daily$temp)
 
-ggplot(data = daily,
+p1 <- ggplot(data = daily,
        aes(x = e_to_in)) +
   geom_histogram() +
   geom_vline(xintercept = mean(daily$e_to_in),
              color = "red",
              linetype = "dashed",
              linewidth = 1)
-
+p1
 
 ```
 
-```{r}
-ggplot(daily_eto, aes(precip_in, e_to_in)) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  theme_light()
-```
 
 ```{r}
 # Data type
@@ -129,7 +123,7 @@ map4 <-ggplot(data = daily, aes(x = date, y = avg_air_temp_f)) +
 ```
 
 # Joining Data
-
+Data needs to be merged, to combine Precipitation and Temperature from the same station. To combine data it will be a left join using the date column since both datasets have a date column.
 ```{r}
 daily_eto <- left_join(eto, daily, by = "date") %>% 
   janitor::clean_names() %>% 
@@ -147,16 +141,20 @@ head(daily_eto)
 ```
 
 # After Joining plot
-
+View how all the three variables (ETo, Precipitation, and Temperature) look in a scatterplot.
 ```{r}
-
 ggplot(data = daily_eto, aes(x = precip_in, 
-                             y = avg_air_temp_f, 
-                             fill = e_to_in)) +
-  geom_point() +
-  labs(title = "ETo ")+
+                             y = avg_air_temp_f)) +
+  # Fill points using ETo
+  geom_point(aes(color = e_to_in)) +
+  labs(title = "Viewing Variables",
+       subtitle = "ETo, Prepicitation, and Temperature",
+       x = "Precipitation (in)",
+       y = "Average Air Temperature (F)",
+       fill = "ETo")+
   theme_linedraw()
 ```
+In this figure we can see if there is a higher average air temperature (F) we can expect more ETo, compared to Precipitation. 
 
 # Hypothesis:
 
@@ -167,10 +165,7 @@ ggplot(data = daily_eto, aes(x = precip_in,
 $$
 \begin{align}
 
-    {Eto} &\sim{Gamma(mu,λ)}\\\
-    
-    Online Notation: 𝑉𝑎𝑟[y]=𝜙𝑉(𝜇)
-    
+    {Eto} &\sim{Gamma(\mu,\phi)}
     
 \end{align}
 $$
@@ -181,9 +176,10 @@ log(\mu) = β0 + β1(Precipitation) + β2(Temperature)
 \end{align} 
 $$
 
--   Lambda = shape parameter
+- Mu = mean
+- Alpha = shape parameter
 
--   Evapotranspiration (ETo) is driven by vapor pressure deficit, radiation, and temperature. On days with higher precipitation, ETo tends to decrease because of cloud cover, lower radiation, and higher humidity.
+- Evapotranspiration (ETo) is driven by vapor pressure deficit, radiation, and temperature. On days with higher precipitation, ETo tends to decrease because of cloud cover, lower radiation, and higher humidity.
 
 2)  Describe your model in statistical notation using the appropriate response family, link function, and predictors. Then use your model to state a statistical hypothesis. Using the wildfire lab again as an example, your statistical hypothesis would be "H0: β_1 = 0; HA: β_1 \> 0".
 
@@ -198,7 +194,7 @@ HA : B1 < 0 \\
 $$
 
 
-\$\$ *(Eto decreases on wetter days)*
+\$\$ *(Null : When there is no precipitation ETo stays the same. Alt: When there is precipitation, ETo decreases. )*
 
 
 $$
@@ -210,7 +206,7 @@ HA : B1 > 0
 $$
 
 
-*(Eto increases with temperature)*
+*(Null: When Temperature is the same, Eto stays the same. Alt: When Temperature increase there is more ETo)*
 
 -   Eto = evapotranspiration (inches)
 -   Precipitation = Daily Precipitation (inches)
@@ -224,11 +220,13 @@ Interested in Evapotranspiration (eto) and average temperature (avg_air_temp_f) 
 ```{r}
 # This will remove any negative integers
 daily_eto <- daily_eto %>%
+  # e_to_in is used since we are grabbing daily numbers
   mutate(e_to_in_adj = e_to_in + 1e-6)
 
 
 # Gamma regression for daily ETo
 cam_gamma <- glm(
+  # Response ~ Predictor + Predictor
   e_to_in_adj ~ precip_in + avg_air_temp_f,
   data = daily_eto,
   family = Gamma(link = "log"))
@@ -245,15 +243,18 @@ B0 <- cam_gamma$coef[1]
 B1 <- cam_gamma$coef[2]
 B2 <- cam_gamma$coef[3]
 
+
 #Sigma and mean? Do not pop up with `$`
 
 ```
 
-"B0 = `r round(B0, 2)` (β₀): The expected ETo when precipitation = 0 and temperature = 0°F."
+"B0 = `r round(B0, 2)` (β₀): The expected ETo when precipitation (in) and temperature (F) are equal to 0."
 
-"B1 = `r round(B1, 2)` (β₁): For each 1-inch increase in precipitation, expected ETo is multiplied by exp(β₁) = `-1.5` inches. This corresponds to approximately a `15%` change in ETo, holding temperature constant."
+"B1 = `r round(B1, 2)` (β₁): For every 1-inch increase in precipitation,e_to_in_adj (ETo) will decrease, holding temperature constant.
 
-"B2 = `r round(B2, 2)` (β₂): For each 1°F increase in mean air temperature, expected ETo is multiplied by exp(β₂) = `0.046`. This corresponds to approximately a `4.6%` increase in ETo, holding precipitation constant."
+"B2 = `r round(B2, 2)` (β₂): For each 1 (F) increase in mean air temperature, e_to_in_adj tends to increase, holding precipitation constant."
+
+All three coefficients hold a value of <2e-16, this implied that all three constants are highly significant. Both predictors have a strong effect on ETo. With more rain, the lower the ETo. With higher temperature the more ETo.
 
 
 # Graph/ Plot
@@ -269,14 +270,14 @@ pred_grid <- expand.grid(
 
 # Generate our predictions
 eto_pred <- pred_grid %>%
-  mutate(lambda = predict(cam_gamma, 
+  mutate(phi = predict(cam_gamma, 
                           newdata = pred_grid, 
                           type = "response"))
 
 # Plot
-ggplot(eto_pred, aes(x = precip_in, y = avg_air_temp_f)) +
-  geom_raster(aes(fill = lambda)) +
-  geom_contour(aes(z = lambda), color = "white", alpha = 0.6) +
+plot1 <- ggplot(eto_pred, aes(x = precip_in, y = avg_air_temp_f)) +
+  geom_raster(aes(fill = phi)) +
+  geom_contour(aes(z = phi), color = "white", alpha = 0.6) +
   # Scale - color fill
   scale_fill_viridis_c() +
   labs(
@@ -288,68 +289,92 @@ ggplot(eto_pred, aes(x = precip_in, y = avg_air_temp_f)) +
   ) +
   theme_light()
 
-```
-
-```{r}
-p1 <- ggplot(
-  data = eto_pred, 
-  mapping = aes(x = precip_in, y = lambda)) + 
-  geom_point(aes(color=avg_air_temp_f))+
+plot2<- ggplot(eto_pred, aes(x = precip_in, y = phi, color = avg_air_temp_f)) +
+  geom_point(alpha = 0.5) +
+  geom_line() +
+  scale_color_viridis_c() +
   labs(
-    x= "previp",
-    y= "eto",
-    color = "temp" )
+    title = "Predicted ETo vs Precipitation",
+    subtitle = "Gamma GLM with log link",
+    x = "Precipitation (in)",
+    y = "Predicted ETo (in)",
+    color = "Temperature (°F)"
+  ) +
+  theme_minimal()
 
+plot1+plot2
 
-p1 
+# Filter temperature to not have so many values next to each other and should be good
+# 
 ```
 
 Hypothesis: (Eto decreases on wetter days) & (Eto increases with temperature) Interp: In the figure shown above, the
 
-# References
-
--   Gamma Positive Continuous Data \| Part 1: Intro, Mean-Variance Relationship.RPub.https://rpubs.com/anangwe/1261395
+*Interp*:
 
 
+
+
+
+# Simulation 
+Using Rgamma (n, shape, scale)
 
 ```{r}
-#test
-daily_eto1 <- daily_eto %>%
-  mutate(e_to_in_adj = avg_e_to_in + 1e-6) %>% 
-  mutate(precip_in_avg = mean(precip_in))
+set.seed(42)
 
-# Gamma regression for daily ETo
-cam_gamma <- glm(
-  e_to_in_adj ~ precip_in_avg + avg_air_temp_f,
-  data = daily_eto1,
-  family = Gamma(link = "log"))
+# Define the number of observations
+n <- 10000
 
-# A grid of predictor(s) to generate predictions for 
-pred_grid1 <- expand.grid(
-  precip_in_avg = seq(min(daily_eto1$precip_in_avg), max(daily_eto1$precip_in_avg), 
-                  length.out = 50),
-  avg_air_temp_f = seq(min(daily_eto1$avg_air_temp_f), max(daily_eto1$avg_air_temp_f), 
-                       length.out = 50))
+# Simulate the two predictor variables
+# You can choose any distribution for your predictors
+x1 <- rnorm(n, mean = 0, sd = 2) # 0–2 inches #PRECIP
+x2 <- runif(n, min = 0, max = 10)# avg temp # TEMP
 
-# Generate our predictions
-eto_pred <- pred_grid %>%
-  mutate(lambda = predict(cam_gamma, 
-                          newdata = pred_grid1, 
-                          type = "response"))
+# Define the true coefficients for your model
+# These coefficients determine the relationship between predictors and the mean of y
+beta0 <- 1    # Intercept - # ETo
+beta1 <- 0.5  # Coefficient for x1 - # Precipitation decreases with Eto
+beta2 <- -0.2 # Coefficient for x2 - # Temperature increases with Eto
 
-# Plot
-ggplot(eto_pred, aes(x = precip_in_avg, y = avg_air_temp_f)) +
-  geom_raster(aes(fill = lambda)) +
-  geom_contour(aes(z = lambda), color = "white", alpha = 0.6) +
-  # Scale - color fill
-  scale_fill_viridis_c() +
-  labs(
-    title = "Predicted Evapotranspiration",
-    subtitle = "Gamma Model",
-    x = "Monthly Precipitation (in)",
-    y = "Average Air Temperature (°F)",
-    fill = "Predicted\nETo"
-  ) +
-  theme_light()
+# Calculate the expected mean of y (lambda) based on predictors and coefficients
+# Using a log-link function, as is common for Gamma GLMs
+mu <- exp(beta0 + beta1 * x1 + beta2 * x2)
+
+# Define the dispersion parameter (or a fixed shape/rate)
+phi <- 2 # A fixed shape parameter
+
+# Calculate the scale parameter based on the mean and shape
+# Mean = shape * scale, so scale = Mean / shape
+scale_param <- mu / phi
+
+# 6. Simulate the Gamma-distributed outcome variable 'y'
+y <- rgamma(n, shape = shape_param, scale = scale_param)
+
+# 7. Combine the simulated data into a data frame
+simulated_data <- data.frame(
+  precip = x1,
+  temp = x2,
+  rgamma = y)
+
+# 8. (Optional) Verify the simulation by fitting a Gamma GLM
+# This helps check if the simulated data reflects the intended relationships
+sim_model <- glm(y ~ precip + temp, 
+                 family = Gamma(link = "log"), 
+                 data = simulated_data)
+summary(sim_model)
+
+# beta_0 <- sim_model$coefficients[1]
+# beta1 <- sim_model$coefficients[2]
+# beta2 <- sim_model$coefficients[3]
+
 ```
+
+
+
+
+# References
+
+-   Gamma Positive Continuous Data Part 1: Intro, Mean-Variance Relationship.RPub.`https://rpubs.com/anangwe/1261395`
+- Micheal Foley. Gamma Distribution. January 17, 2029.`https://rpubs.com/mpfoley73/459051`
+
 
