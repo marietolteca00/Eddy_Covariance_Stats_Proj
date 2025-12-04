@@ -15,6 +15,8 @@ library(dplyr)
 library(patchwork)
 library(knitr)
 library(lubridate)
+library(purrr)
+set.seed(42)
 ```
 
 # Importing Data
@@ -256,11 +258,8 @@ B2 <- cam_gamma$coef[3]
 
 All three coefficients hold a value of <2e-16, this implied that all three constants are highly significant. Both predictors have a strong effect on ETo. With more rain, the lower the ETo. With higher temperature the more ETo.
 
-
-# Graph/ Plot
-
+# Expand Grid and Prediction Grid
 ```{r}
-
 # A grid of predictor(s) to generate predictions for 
 pred_grid <- expand.grid(
   precip_in = seq(min(daily_eto$precip_in), max(daily_eto$precip_in), 
@@ -273,7 +272,12 @@ eto_pred <- pred_grid %>%
   mutate(phi = predict(cam_gamma, 
                           newdata = pred_grid, 
                           type = "response"))
+```
 
+
+# Graph/ Plot
+
+```{r}
 # Plot
 plot1 <- ggplot(eto_pred, aes(x = precip_in, y = avg_air_temp_f)) +
   geom_raster(aes(fill = phi)) +
@@ -302,10 +306,9 @@ plot2<- ggplot(eto_pred, aes(x = precip_in, y = phi, color = avg_air_temp_f)) +
   ) +
   theme_minimal()
 
-plot1+plot2
+plot1
+plot2
 
-# Filter temperature to not have so many values next to each other and should be good
-# 
 ```
 
 Hypothesis: (Eto decreases on wetter days) & (Eto increases with temperature) Interp: In the figure shown above, the
@@ -313,59 +316,120 @@ Hypothesis: (Eto decreases on wetter days) & (Eto increases with temperature) In
 *Interp*:
 
 
+# Confidence Intervals and Setting Bands for Temperature Levels
+```{r}
+# Prediction grid with selected temperature levels
+temp_levels <- c(50, 60, 70, 80)  # Pick readable bands
+
+pred_grid <- expand.grid(
+  precip_in = seq(min(daily_eto$precip_in), max(daily_eto$precip_in), length.out = 50),
+  avg_air_temp_f = temp_levels
+)
+
+# Predictions on response scale
+eto_pred <- pred_grid %>% 
+  mutate(lambda = predict(
+    object = cam_gamma,
+    newdata = pred_grid,
+    type = "response"
+  ))
+
+# Prediction for Standard Error- This will be used for CI
+eto_se <- predict(
+  object = cam_gamma,
+  newdata = pred_grid,
+  type = "link",
+  se.fit = TRUE
+)
+
+# Inverse link function (exp for log link)
+linkinv <- family(cam_gamma)$linkinv
+
+eto_pred <- pred_grid %>%
+  mutate(
+    logit_p    = eto_se$fit,
+    logit_p_se = eto_se$se.fit,
+    
+    # 95% CI on link scale
+    logit_p_lwr = qnorm(0.025, mean = logit_p, sd = logit_p_se),
+    logit_p_upr = qnorm(0.975, mean = logit_p, sd = logit_p_se),
+    
+    # Back-transform to response scale
+    lambda       = linkinv(logit_p),
+    lambda_lwr   = linkinv(logit_p_lwr),
+    lambda_upr   = linkinv(logit_p_upr)
+  )
+
+# Plot with CI
+ggplot(eto_pred, aes(x = precip_in, y = lambda, color = factor(avg_air_temp_f))) +
+  geom_ribbon(aes(ymin = lambda_lwr, ymax = lambda_upr, fill = factor(avg_air_temp_f)),
+              alpha = 0.2, color = NA) +
+  geom_line() +
+  labs(
+    x = "Daily Precipitation (inches)",
+    y = "Predicted ETo (inches)",
+    color = "Air Temp (°F)",
+    fill = "Air Temp (°F)"
+  ) +
+  theme_light()
+
+```
+
+
+
+
+
+
 
 
 
 # Simulation 
-Using Rgamma (n, shape, scale)
-
+Using Rgamma (n, shape, scale). References used Cross Validate and Gamma Positive Continuous Data.
 ```{r}
 set.seed(42)
 
-# Define the number of observations
+# Number of observations
 n <- 10000
 
 # Simulate the two predictor variables
-# You can choose any distribution for your predictors
 x1 <- rnorm(n, mean = 0, sd = 2) # 0–2 inches #PRECIP
-x2 <- runif(n, min = 0, max = 10)# avg temp # TEMP
+x2 <- runif(n, min = 2, max = 10)# avg temp # TEMP
 
-# Define the true coefficients for your model
-# These coefficients determine the relationship between predictors and the mean of y
-beta0 <- 1    # Intercept - # ETo
-beta1 <- 0.5  # Coefficient for x1 - # Precipitation decreases with Eto
-beta2 <- -0.2 # Coefficient for x2 - # Temperature increases with Eto
+# Defining the True Coefficients
+sim_beta0 <- 1    # Intercept - # ETo
+sim_beta1 <- 0.5  # Coefficient for x1 -  Precipitation decreases with Eto
+sim_beta2 <- -0.2 # Coefficient for x2 -  Temperature increases with Eto
+shape_param <- 2  # True shape parameter of the gamma distribution
 
-# Calculate the expected mean of y (lambda) based on predictors and coefficients
-# Using a log-link function, as is common for Gamma GLMs
-mu <- exp(beta0 + beta1 * x1 + beta2 * x2)
 
-# Define the dispersion parameter (or a fixed shape/rate)
+# Calculate the expected mean of y based on predictors and coefficients
+mu <- exp(sim_beta0 + sim_beta1 * x1 + sim_beta2 * x2)
+
+# Dispersion parameter
 phi <- 2 # A fixed shape parameter
 
 # Calculate the scale parameter based on the mean and shape
-# Mean = shape * scale, so scale = Mean / shape
 scale_param <- mu / phi
 
-# 6. Simulate the Gamma-distributed outcome variable 'y'
+# Simulate the Gamma-distributed outcome variable 'y'
 y <- rgamma(n, shape = shape_param, scale = scale_param)
 
-# 7. Combine the simulated data into a data frame
+# Combine the simulated data into a data frame
 simulated_data <- data.frame(
   precip = x1,
   temp = x2,
   rgamma = y)
 
-# 8. (Optional) Verify the simulation by fitting a Gamma GLM
+# Simulation by fitting a Gamma GLM
 # This helps check if the simulated data reflects the intended relationships
 sim_model <- glm(y ~ precip + temp, 
                  family = Gamma(link = "log"), 
                  data = simulated_data)
 summary(sim_model)
 
-# beta_0 <- sim_model$coefficients[1]
-# beta1 <- sim_model$coefficients[2]
-# beta2 <- sim_model$coefficients[3]
+sim_b0 <- sim_model$coefficients[1]
+sim_b1 <- sim_model$coefficients[2]
+sim_b2 <- sim_model$coefficients[3]
 
 ```
 
@@ -373,8 +437,7 @@ summary(sim_model)
 
 
 # References
-
--   Gamma Positive Continuous Data Part 1: Intro, Mean-Variance Relationship.RPub.`https://rpubs.com/anangwe/1261395`
-- Micheal Foley. Gamma Distribution. January 17, 2029.`https://rpubs.com/mpfoley73/459051`
-
+- Cross Validated. Stack Exchange. How to simulate data for a Gamma glm. [Link](https://stats.stackexchange.com/questions/623051/how-to-simulate-data-for-a-gamma-glm).
+- Gamma Positive Continuous Data Part 1: Intro, Mean-Variance Relationship.RPub.[Link](https://rpubs.com/anangwe/1261395).
+- Micheal Foley. Gamma Distribution. January 17, 2029.[Link](https://rpubs.com/mpfoley73/459051).
 
