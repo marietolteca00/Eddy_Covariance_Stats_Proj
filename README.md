@@ -8,9 +8,7 @@ Final Project - EDS 222 Statistic For Environmental Data Science
 
 $$ 
 \begin{align}
-
     {Eto} &\sim{Gamma(\mu,\phi)}
-    
 \end{align}
 $$
 
